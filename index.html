@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuji Vibes — Film Recipe Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<style>
+  :root {
+    --bg: #0F0D0A; --bg-warm: #1A1612; --bg-card: #201C17; --bg-input: #2A2520;
+    --border: #3A3530; --border-light: #4A4439;
+    --fuji-green: #4AEE7D; --fuji-green-dim: rgba(74,238,125,0.12); --fuji-green-glow: rgba(74,238,125,0.25);
+    --amber: #C67B2E; --amber-soft: rgba(198,123,46,0.15); --amber-glow: rgba(198,123,46,0.3);
+    --coral: #B84A3C; --teal: #156967; --gold: #D4A233;
+    --text: #F2EDE5; --text-secondary: #C9BFBB; --text-muted: #9A9186; --text-faint: #6F695F;
+    --success: #4AEE7D; --error: #E85D5D;
+    --font-heading: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --radius: 8px; --radius-lg: 12px;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; overflow-x: hidden; }
+  body::after { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9999; }
+  .bg-glow { position: fixed; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse, rgba(198,123,46,0.06) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 20px 80px; position: relative; z-index: 1; }
+
+  /* Header */
+  header { text-align: center; padding: 48px 0 36px; margin-bottom: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .film-icon { width: 36px; height: 36px; border: 2px solid var(--fuji-green); border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px var(--fuji-green-glow); }
+  .film-icon::before { content: ''; width: 14px; height: 14px; border: 2px solid var(--fuji-green); border-radius: 50%; }
+  .film-icon .sprocket { position: absolute; width: 4px; height: 4px; background: var(--fuji-green); border-radius: 1px; }
+  .film-icon .sprocket:nth-child(1) { top: 3px; left: 3px; }
+  .film-icon .sprocket:nth-child(2) { top: 3px; right: 3px; }
+  .film-icon .sprocket:nth-child(3) { bottom: 3px; left: 3px; }
+  .film-icon .sprocket:nth-child(4) { bottom: 3px; right: 3px; }
+  header h1 { font-family: var(--font-heading); font-size: clamp(2rem, 6vw, 2.8rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  header h1 .vibes { background: linear-gradient(135deg, var(--fuji-green), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .tagline { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-top: 10px; }
+  .tagline .blink { animation: blink 1.2s step-end infinite; color: var(--fuji-green); }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  .film-divider { display: flex; align-items: center; gap: 8px; margin: 0 auto 36px; max-width: 400px; }
+  .film-divider .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-light), transparent); }
+  .film-divider .hole { width: 8px; height: 8px; border: 1.5px solid var(--border-light); border-radius: 2px; flex-shrink: 0; }
+
+  /* Steps */
+  .steps-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 32px; padding: 0 4px; }
+  .step-indicator { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .step-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--text-faint); flex-shrink: 0; transition: all 0.4s var(--ease); }
+  .step-indicator.active .step-dot { border-color: var(--fuji-green); color: var(--fuji-green); box-shadow: 0 0 12px var(--fuji-green-glow); }
+  .step-indicator.done .step-dot { border-color: var(--fuji-green); background: var(--fuji-green); color: var(--bg); }
+  .step-connector { flex: 1; height: 1px; background: var(--border); transition: background 0.4s var(--ease); }
+  .step-connector.done { background: var(--fuji-green); }
+  .step-dot-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); transition: color 0.3s; display: none; }
+  @media (min-width: 500px) { .step-dot-label { display: block; } }
+  .step-indicator.active .step-dot-label { color: var(--fuji-green); }
+  .step-indicator.done .step-dot-label { color: var(--text-muted); }
+
+  .step-panel { display: none; animation: fadeSlideIn 0.4s var(--ease); }
+  .step-panel.visible { display: block; }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .step-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--fuji-green); margin-bottom: 6px; }
+  .step-title { font-family: var(--font-heading); font-size: clamp(1.4rem, 4vw, 1.75rem); font-weight: 600; letter-spacing: -0.01em; margin-bottom: 10px; }
+  .step-desc { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; line-height: 1.7; }
+
+  /* Forms */
+  label { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+  select, textarea, input[type="text"] { width: 100%; padding: 14px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease); }
+  select:focus, textarea:focus, input[type="text"]:focus { border-color: var(--fuji-green); box-shadow: 0 0 0 3px var(--fuji-green-dim); }
+  select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239A9186'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+  select option { background: var(--bg-card); color: var(--text); }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
+  .field-group { margin-bottom: 24px; }
+  .help-text { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 8px; letter-spacing: 0.02em; }
+
+  /* Mode toggle */
+  .mode-toggle { display: flex; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+  .mode-btn { flex: 1; padding: 12px 16px; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; cursor: pointer; transition: all 0.3s var(--ease); text-align: center; }
+  .mode-btn.active { background: var(--fuji-green-dim); color: var(--fuji-green); }
+  .mode-btn:hover:not(.active) { color: var(--text-secondary); }
+
+  /* Questionnaire */
+  .q-section { display: none; }
+  .q-section.visible { display: block; }
+
+  .q-card {
+    background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px; margin-bottom: 16px; transition: border-color 0.3s var(--ease);
+  }
+  .q-card:focus-within { border-color: var(--fuji-green); }
+
+  .q-card .q-label { font-family: var(--font-heading); font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .q-card .q-hint { font-family: var(--font-serif); font-size: 13px; font-style: italic; color: var(--text-faint); margin-bottom: 12px; }
+
+  /* Chip selector (multi-select) */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 16px; border: 1px solid var(--border); border-radius: 100px;
+    font-family: var(--font-body); font-size: 13px; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s var(--ease); user-select: none; background: transparent;
+  }
+  .chip:hover { border-color: var(--border-light); color: var(--text-secondary); }
+  .chip.selected { border-color: var(--fuji-green); color: var(--fuji-green); background: var(--fuji-green-dim); }
+
+  /* Single-select chips */
+  .chip-single .chip.selected { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+
+  /* Inline row for small selects */
+  .q-row { display: flex; gap: 16px; }
+  .q-row .field-group { flex: 1; margin-bottom: 0; }
+
+  .q-card select, .q-card textarea, .q-card input[type="text"] { background: var(--bg-input); }
+  .q-card textarea { min-height: 80px; }
+
+  /* Prompt box */
+  .prompt-box { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow-y: auto; position: relative; }
+  .prompt-box::before { content: 'PROMPT'; position: absolute; top: -10px; left: 16px; background: var(--bg-input); padding: 0 8px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--fuji-green); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 28px; border: none; border-radius: var(--radius); font-family: var(--font-heading); font-size: 13px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; transition: all 0.3s var(--ease); position: relative; overflow: hidden; }
+  .btn:focus-visible { outline: 2px solid var(--fuji-green); outline-offset: 2px; }
+  .btn-primary { background: var(--fuji-green); color: var(--bg); }
+  .btn-primary:hover { box-shadow: 0 0 20px var(--fuji-green-glow), 0 4px 12px rgba(0,0,0,0.3); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-secondary { background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+  .btn-secondary:hover { background: var(--amber-soft); box-shadow: 0 0 16px var(--amber-glow); }
+  .btn-ghost { background: transparent; color: var(--text-muted); padding: 10px 18px; font-size: 12px; }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-row { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+
+  /* Validation */
+  .validation-msg { padding: 14px 18px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; line-height: 1.7; margin-bottom: 16px; display: none; }
+  .validation-msg.error { display: block; background: rgba(232,93,93,0.08); border: 1px solid rgba(232,93,93,0.25); color: var(--error); }
+  .validation-msg.success { display: block; background: var(--fuji-green-dim); border: 1px solid rgba(74,238,125,0.25); color: var(--fuji-green); }
+
+  /* Preset stack */
+  .preset-stack { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+  .preset-card { background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: all 0.3s var(--ease); }
+  .preset-card:hover { border-color: var(--border-light); }
+  .preset-header { display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer; user-select: none; transition: background 0.2s; }
+  .preset-header:hover { background: rgba(255,255,255,0.02); }
+  .preset-slot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--fuji-green); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fuji-green); flex-shrink: 0; box-shadow: 0 0 10px var(--fuji-green-dim); }
+  .preset-info { flex: 1; min-width: 0; }
+  .preset-name { font-family: var(--font-heading); font-size: 15px; font-weight: 600; color: var(--text); }
+  .preset-use-case { font-family: var(--font-serif); font-size: 13px; color: var(--text-muted); font-style: italic; margin-top: 2px; }
+  .preset-best-for { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; color: var(--amber); background: var(--amber-soft); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-top: 6px; }
+  .preset-chevron { width: 20px; height: 20px; flex-shrink: 0; transition: transform 0.3s var(--ease); color: var(--text-faint); }
+  .preset-card.open .preset-chevron { transform: rotate(180deg); }
+  .preset-details { max-height: 0; overflow: hidden; transition: max-height 0.4s var(--ease); }
+  .preset-card.open .preset-details { max-height: 600px; }
+  .preset-settings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 20px 20px; }
+  .mini-setting { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .mini-setting .ms-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-faint); margin-bottom: 2px; }
+  .mini-setting .ms-value { font-family: var(--font-heading); font-size: 14px; font-weight: 600; color: var(--text); }
+  .mini-setting.green { border-color: rgba(74,238,125,0.3); background: var(--fuji-green-dim); }
+  .mini-setting.green .ms-label { color: var(--fuji-green); }
+
+  .stack-name-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 20px; }
+  .stack-name-row .field-group { flex: 1; margin-bottom: 0; }
+
+  .viewfinder { position: relative; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin: 24px 0; background: var(--bg-warm); }
+  .viewfinder::before, .viewfinder::after { content: ''; position: absolute; width: 12px; height: 12px; border-color: var(--fuji-green); border-style: solid; }
+  .viewfinder::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; border-radius: 2px 0 0 0; }
+  .viewfinder::after { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; border-radius: 0 0 2px 0; }
+  .viewfinder-label { position: absolute; top: 10px; right: 16px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--fuji-green); opacity: 0.6; }
+
+  .copy-feedback { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--fuji-green); color: var(--bg); padding: 10px 24px; border-radius: 100px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.5px; opacity: 0; transition: all 0.4s var(--ease); z-index: 100; box-shadow: 0 4px 20px var(--fuji-green-glow); }
+  .copy-feedback.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  footer { text-align: center; padding: 40px 0 24px; margin-top: 60px; position: relative; }
+  footer::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 200px; height: 1px; background: linear-gradient(90deg, transparent, var(--border-light), transparent); }
+  footer p { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: 0.03em; line-height: 1.8; }
+
+  .film-strip-top { display: flex; justify-content: center; gap: 12px; padding: 8px 0; margin-bottom: 8px; }
+  .film-strip-top .frame { width: 6px; height: 6px; border: 1px solid var(--border); border-radius: 1px; opacity: 0.4; }
+
+  @media (max-width: 600px) {
+    .preset-settings-grid { grid-template-columns: repeat(2, 1fr); }
+    .btn-row { flex-direction: column; } .btn { width: 100%; }
+    .viewfinder { padding: 16px; }
+    .stack-name-row, .q-row { flex-direction: column; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="container">
+  <div class="film-strip-top"><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div></div>
+  <header>
+    <div class="logo-mark"><div class="film-icon"><span class="sprocket"></span><span class="sprocket"></span><span class="sprocket"></span><span class="sprocket"></span></div></div>
+    <h1>FUJI <span class="vibes">VIBES</span></h1>
+    <p class="tagline">preset stack generator <span class="blink">_</span></p>
+  </header>
+  <div class="film-divider"><div class="line"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="line"></div></div>
+
+  <div class="steps-bar">
+    <div class="step-indicator active" id="si-1"><div class="step-dot">1</div><span class="step-dot-label">VIBE</span></div>
+    <div class="step-connector" id="sc-1"></div>
+    <div class="step-indicator" id="si-2"><div class="step-dot">2</div><span class="step-dot-label">PROMPT</span></div>
+    <div class="step-connector" id="sc-2"></div>
+    <div class="step-indicator" id="si-3"><div class="step-dot">3</div><span class="step-dot-label">EXPORT</span></div>
+  </div>
+
+  <!-- ═══ STEP 1 ═══ -->
+  <section class="step-panel visible" id="step-1">
+    <div class="step-label">Step 01</div>
+    <h2 class="step-title">Describe your vibe</h2>
+    <p class="step-desc">Answer a few quick questions and we'll build the perfect prompt. Or switch to freeform and write it yourself.</p>
+
+    <div class="field-group">
+      <label for="camera-select">Camera Body</label>
+      <select id="camera-select">
+        <option value="">Select your camera...</option>
+        <optgroup label="X-Trans V"><option value="X-T5">X-T5</option><option value="X-H2S">X-H2S</option><option value="X-H2">X-H2</option><option value="X-S20">X-S20</option><option value="X-T50">X-T50</option><option value="X100VI">X100VI</option><option value="X-M5">X-M5</option></optgroup>
+        <optgroup label="X-Trans IV"><option value="X-T4">X-T4</option><option value="X-S10">X-S10</option><option value="X-Pro3">X-Pro3</option><option value="X-E4">X-E4</option><option value="X100V">X100V</option><option value="X-T30 II">X-T30 II</option></optgroup>
+        <optgroup label="X-Trans III"><option value="X-T3">X-T3</option><option value="X-T30">X-T30</option><option value="X-Pro2">X-Pro2</option><option value="X-E3">X-E3</option><option value="X100F">X100F</option><option value="X-H1">X-H1</option><option value="X-T2">X-T2</option><option value="X-T20">X-T20</option></optgroup>
+      </select>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="guided" type="button">Guided Questions</button>
+      <button class="mode-btn" data-mode="freeform" type="button">Freeform</button>
+    </div>
+
+    <!-- GUIDED MODE -->
+    <div class="q-section visible" id="guided-section">
+
+      <div class="q-card">
+        <div class="q-label">What's the occasion?</div>
+        <div class="q-hint">Trip, event, everyday shooting, or something else?</div>
+        <input type="text" id="q-occasion" placeholder="e.g. NYC trip in late May with friends" />
+      </div>
+
+      <div class="q-card">
+        <div class="q-label">What are you shooting?</div>
+        <div class="q-hint">Pick all that apply.</div>
+        <div class="chip-group" id="q-subjects">
+          <div class="chip" data-val="Portraits of friends/people">Portraits</div>
+          <div class="chip" data-val="City scenery and architecture">City / Architecture</div>
+          <div class="chip" data-val="Nature and landscapes">Nature / Landscapes</div>
+          <div class="chip" data-val="Street photography">Street</div>
+          <div class="chip" data-val="Food and restaurants">Food</div>
+          <div class="chip" data-val="Events and gatherings">Events</div>
+          <div class="chip" data-val="Self-portraits and group shots">Selfies / Group</div>
+          <div class="chip" data-val="Details and close-ups">Details / Macro</div>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-label">What's the vibe?</div>
+        <div class="q-hint">Pick all that describe the feeling you want in your photos.</div>
+        <div class="chip-group" id="q-vibes">
+          <div class="chip" data-val="Dreamy and soft">Dreamy</div>
+          <div class="chip" data-val="Warm and golden">Warm</div>
+          <div class="chip" data-val="Moody and cinematic">Moody</div>
+          <div class="chip" data-val="Bright and airy">Bright</div>
+          <div class="chip" data-val="Faded analog film look">Faded / Analog</div>
+          <div class="chip" data-val="Natural and true to life">Natural</div>
+          <div class="chip" data-val="High contrast and punchy">Contrasty</div>
+          <div class="chip" data-val="Pastel and muted tones">Pastel</div>
+          <div class="chip" data-val="Vintage 70s/80s feel">Vintage</div>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-label">When and where will you be shooting?</div>
+        <div class="q-hint">Pick all that apply. Helps the AI pick the right white balance and exposure for each preset.</div>
+        <div class="chip-group" id="q-conditions">
+          <div class="chip" data-val="Golden hour / sunset">Golden Hour</div>
+          <div class="chip" data-val="Bright midday sun">Midday Sun</div>
+          <div class="chip" data-val="Overcast or cloudy">Overcast</div>
+          <div class="chip" data-val="Indoor ambient light (restaurants, museums)">Indoors</div>
+          <div class="chip" data-val="Night / low light">Night</div>
+          <div class="chip" data-val="Rainy or foggy">Rain / Fog</div>
+          <div class="chip" data-val="Shade / open shade">Shade</div>
+          <div class="chip" data-val="Mixed lighting">Mixed Light</div>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-label">Film grain?</div>
+        <div class="q-hint">Do you want that analog film grain look?</div>
+        <div class="chip-group chip-single" id="q-grain">
+          <div class="chip" data-val="No grain, keep it clean">No grain</div>
+          <div class="chip" data-val="Subtle grain for analog feel">Subtle</div>
+          <div class="chip" data-val="Heavy grain for vintage look">Heavy</div>
+          <div class="chip" data-val="Mix it up, different per preset">Mix it up</div>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-row">
+          <div class="field-group">
+            <label for="q-presets">How many presets?</label>
+            <select id="q-presets">
+              <option value="7" selected>7 (full stack)</option>
+              <option value="5">5</option>
+              <option value="3">3</option>
+              <option value="1">1</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-label">Anything else?</div>
+        <div class="q-hint">Optional. Specific film stocks you like, things to avoid, or other details.</div>
+        <textarea id="q-extra" rows="3" placeholder="e.g. I like the Portra 400 look. Don't include black and white, I never shoot it."></textarea>
+      </div>
+    </div>
+
+    <!-- FREEFORM MODE -->
+    <div class="q-section" id="freeform-section">
+      <div class="field-group">
+        <label for="vibe-input">Describe everything</label>
+        <textarea id="vibe-input" placeholder="NYC trip in late May with 3 friends, all girls. Scenery and portraits. Dreamy look that captures emotion and the feeling of the moment. No black and white."></textarea>
+        <p class="help-text">Be natural. Describe the trip, the people, the mood, the lighting. Only mention vibes you actually shoot.</p>
+      </div>
+      <div class="field-group">
+        <div class="q-row">
+          <div class="field-group">
+            <label for="q-presets-free">How many presets?</label>
+            <select id="q-presets-free">
+              <option value="7" selected>7 (full stack)</option>
+              <option value="5">5</option>
+              <option value="3">3</option>
+              <option value="1">1</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-generate" disabled>Generate Prompt</button>
+    </div>
+  </section>
+
+  <!-- ═══ STEP 2 ═══ -->
+  <section class="step-panel" id="step-2">
+    <div class="step-label">Step 02</div>
+    <h2 class="step-title">Copy this to any AI</h2>
+    <p class="step-desc">Paste this into ChatGPT, Claude, Gemini, or whatever you use. It'll give you your preset stack as JSON. Copy the whole response back.</p>
+    <div class="prompt-box" id="prompt-output"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-copy">Copy Prompt</button>
+      <button class="btn btn-secondary" id="btn-to-step3">I have my stack</button>
+      <button class="btn btn-ghost" id="btn-back-1">Back</button>
+    </div>
+  </section>
+
+  <!-- ═══ STEP 3 ═══ -->
+  <section class="step-panel" id="step-3">
+    <div class="step-label">Step 03</div>
+    <h2 class="step-title">Review and export your stack</h2>
+    <p class="step-desc">Paste the JSON array from your AI. We'll validate every preset and build your .FP1 files.</p>
+    <div class="field-group">
+      <label for="json-input">AI Response</label>
+      <textarea id="json-input" rows="8" placeholder='Paste the full JSON array here. Starts with [ and contains your preset objects...'></textarea>
+    </div>
+    <div class="validation-msg" id="validation-msg"></div>
+    <div id="preview-area" style="display:none;">
+      <div class="viewfinder">
+        <span class="viewfinder-label">YOUR STACK</span>
+        <div class="stack-name-row"><div class="field-group"><label for="stack-name">Stack Name</label><input type="text" id="stack-name" placeholder="e.g. NYC May 2026" /></div></div>
+        <div class="preset-stack" id="preset-stack"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-validate" disabled>Validate</button>
+      <button class="btn btn-primary" id="btn-download" style="display:none;">Download All .FP1 Files</button>
+      <button class="btn btn-ghost" id="btn-back-2">Back</button>
+      <button class="btn btn-ghost" id="btn-start-over" style="display:none;">Start Over</button>
+    </div>
+  </section>
+
+  <footer>
+    <p>Fuji Vibes generates standard .FP1 XML profiles compatible with Fuji X Raw Studio.<br>
+    Drop files into <span style="color:var(--text-muted)">AppData\Local\com.fujifilm.denji\X_RAW_STUDIO\</span> and load via USB.<br>
+    Not affiliated with Fujifilm.</p>
+  </footer>
+</div>
+<div class="copy-feedback" id="copy-feedback">Copied to clipboard</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const FILM_SIMS = {
+    'X-Trans V': ['Provia','Velvia','Astia','Classic Chrome','Classic Neg','Nostalgic Neg','Reala Ace','Pro Neg Hi','Pro Neg Std','Eterna','Eterna Bleach Bypass','Acros','Monochrome','Sepia'],
+    'X-Trans IV': ['Provia','Velvia','Astia','Classic Chrome','Classic Neg','Nostalgic Neg','Pro Neg Hi','Pro Neg Std','Eterna','Eterna Bleach Bypass','Acros','Monochrome','Sepia'],
+    'X-Trans III': ['Provia','Velvia','Astia','Classic Chrome','Pro Neg Hi','Pro Neg Std','Acros','Monochrome','Sepia']
+  };
+  const CAMERA_GEN = {
+    'X-T5':'X-Trans V','X-H2S':'X-Trans V','X-H2':'X-Trans V','X-S20':'X-Trans V','X-T50':'X-Trans V','X100VI':'X-Trans V','X-M5':'X-Trans V',
+    'X-T4':'X-Trans IV','X-S10':'X-Trans IV','X-Pro3':'X-Trans IV','X-E4':'X-Trans IV','X100V':'X-Trans IV','X-T30 II':'X-Trans IV',
+    'X-T3':'X-Trans III','X-T30':'X-Trans III','X-Pro2':'X-Trans III','X-E3':'X-Trans III','X100F':'X-Trans III','X-H1':'X-Trans III','X-T2':'X-Trans III','X-T20':'X-Trans III'
+  };
+  const VALID_VALS = { DynamicRange:['Auto','DR100','DR200','DR400'], GrainEffect:['OFF','WEAK','STRONG'], GrainEffectSize:['SMALL','LARGE'], ChromeEffect:['OFF','WEAK','STRONG'], ColorChromeBlue:['OFF','WEAK','STRONG'], WhiteBalance:['Auto','Daylight','Shade','Fluorescent1','Fluorescent2','Fluorescent3','Incandescent','Underwater','ColorTemp'] };
+  const NUM_RANGES = { WBShiftR:[-9,9], WBShiftB:[-9,9], HighlightTone:[-4,4], ShadowTone:[-4,4], Color:[-4,4], Sharpness:[-4,4], NoisReduction:[-4,4], Clarity:[-5,5], ExposureBias:[-3,3] };
+  const LABELS = { FilmSimulation:'Film Sim', DynamicRange:'DR', GrainEffect:'Grain', GrainEffectSize:'Grain Size', ChromeEffect:'Chrome', ColorChromeBlue:'Chrome Blue', WhiteBalance:'WB', WBShiftR:'WB Red', WBShiftB:'WB Blue', WBColorTemp:'Temp', HighlightTone:'Highlight', ShadowTone:'Shadow', Color:'Color', Sharpness:'Sharp', NoisReduction:'NR', Clarity:'Clarity', ExposureBias:'Exp Comp' };
+  const SETTING_KEYS = ['FilmSimulation','DynamicRange','GrainEffect','GrainEffectSize','ChromeEffect','ColorChromeBlue','WhiteBalance','WBShiftR','WBShiftB','WBColorTemp','HighlightTone','ShadowTone','Color','Sharpness','NoisReduction','Clarity','ExposureBias'];
+
+  const $ = id => document.getElementById(id);
+  const cameraSelect = $('camera-select'), vibeInput = $('vibe-input');
+  const btnGenerate = $('btn-generate'), btnCopy = $('btn-copy');
+  const btnToStep3 = $('btn-to-step3'), btnBack1 = $('btn-back-1'), btnBack2 = $('btn-back-2');
+  const btnValidate = $('btn-validate'), btnDownload = $('btn-download'), btnStartOver = $('btn-start-over');
+  const promptOutput = $('prompt-output'), jsonInput = $('json-input');
+  const validationMsg = $('validation-msg'), previewArea = $('preview-area');
+  const presetStackEl = $('preset-stack'), stackNameEl = $('stack-name');
+  const copyFeedback = $('copy-feedback');
+
+  let currentStep = 1, selectedCamera = '', selectedGen = '', parsedStack = null, mode = 'guided';
+
+  // ═══ MODE TOGGLE ═══
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      mode = this.dataset.mode;
+      $('guided-section').classList.toggle('visible', mode === 'guided');
+      $('freeform-section').classList.toggle('visible', mode === 'freeform');
+      checkStep1();
+    });
+  });
+
+  // ═══ CHIP SELECTORS ═══
+  document.querySelectorAll('.chip-group').forEach(group => {
+    const isSingle = group.classList.contains('chip-single') || group.closest('.chip-single');
+    group.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', function() {
+        if (group.parentElement.classList.contains('chip-single') || group.classList.contains('chip-single')) {
+          group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        }
+        this.classList.toggle('selected');
+        checkStep1();
+      });
+    });
+  });
+
+  // ═══ NAV ═══
+  function goToStep(n) {
+    currentStep = n;
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('visible'));
+    $('step-' + n).classList.add('visible');
+    for (let i = 1; i <= 3; i++) { const si = $('si-' + i); si.classList.remove('active','done'); if (i < n) si.classList.add('done'); if (i === n) si.classList.add('active'); }
+    for (let i = 1; i <= 2; i++) $('sc-' + i).classList.toggle('done', i < n);
+  }
+
+  // ═══ STEP 1 VALIDATION ═══
+  function checkStep1() {
+    if (!cameraSelect.value) { btnGenerate.disabled = true; return; }
+    if (mode === 'freeform') { btnGenerate.disabled = !vibeInput.value.trim(); return; }
+    // Guided: need at least occasion or subjects
+    const occasion = $('q-occasion').value.trim();
+    const subjects = getSelectedChips('q-subjects');
+    btnGenerate.disabled = !(occasion || subjects.length);
+  }
+
+  cameraSelect.addEventListener('change', function() { selectedCamera = this.value; selectedGen = CAMERA_GEN[selectedCamera] || ''; checkStep1(); });
+  vibeInput.addEventListener('input', checkStep1);
+  $('q-occasion').addEventListener('input', checkStep1);
+
+  function getSelectedChips(groupId) {
+    return Array.from($(groupId).querySelectorAll('.chip.selected')).map(c => c.dataset.val);
+  }
+
+  // ═══ GENERATE PROMPT ═══
+  btnGenerate.addEventListener('click', function() {
+    const sims = FILM_SIMS[selectedGen] || FILM_SIMS['X-Trans V'];
+    let presetCount, vibeDescription;
+
+    if (mode === 'guided') {
+      presetCount = parseInt($('q-presets').value);
+      const occasion = $('q-occasion').value.trim();
+      const subjects = getSelectedChips('q-subjects');
+      const vibes = getSelectedChips('q-vibes');
+      const conditions = getSelectedChips('q-conditions');
+      const grainArr = getSelectedChips('q-grain');
+      const grain = grainArr.length ? grainArr[0] : '';
+      const extra = $('q-extra').value.trim();
+
+      const parts = [];
+      if (occasion) parts.push('Occasion: ' + occasion);
+      if (subjects.length) parts.push('Subjects: ' + subjects.join(', '));
+      if (vibes.length) parts.push('Vibe/mood: ' + vibes.join(', '));
+      if (conditions.length) parts.push('Shooting conditions: ' + conditions.join(', '));
+      if (grain) parts.push('Grain preference: ' + grain);
+      if (extra) parts.push('Additional notes: ' + extra);
+      vibeDescription = parts.join('\n');
+    } else {
+      presetCount = parseInt($('q-presets-free').value);
+      vibeDescription = vibeInput.value.trim();
+    }
+
+    const slotList = Array.from({length: presetCount}, (_, i) => 'C' + (i + 1)).join(', ');
+
+    const prompt = `I need you to create a ${presetCount}-preset stack (${slotList}) for my Fujifilm ${selectedCamera} (${selectedGen} sensor).
+
+HERE'S WHAT I'M SHOOTING:
+${vibeDescription}
+
+IMPORTANT RULES:
+- Build all ${presetCount} presets around ONLY the vibes and subjects described above. Do not add vibes I didn't mention (like black and white, unless I asked for it).
+- If all the vibes are covered in fewer than ${presetCount} presets, fill the remaining slots with backup variations of those same vibes for different lighting conditions, indoor/outdoor versions, or subtle tweaks.
+- Each preset should have a clear, distinct use case. No two presets should be redundant.
+- Explain each preset's intended use in the "useCase" field and the best shooting conditions in "bestFor".
+
+Return ONLY a JSON array of ${presetCount} objects. No explanation before the JSON. You can explain your reasoning AFTER the array.
+
+Each object must have these exact keys:
+
+{
+  "slot": "${slotList.split(', ')[0]}" through "${slotList.split(', ').pop()}",
+  "name": short descriptive name (2-4 words),
+  "useCase": one sentence describing when to reach for this preset,
+  "bestFor": short tag like "Golden hour outdoors" or "Indoor ambient light",
+  "FilmSimulation": one of [${sims.map(s => '"' + s + '"').join(', ')}],
+  "DynamicRange": one of ["Auto", "DR100", "DR200", "DR400"],
+  "GrainEffect": one of ["OFF", "WEAK", "STRONG"],
+  "GrainEffectSize": one of ["SMALL", "LARGE"],
+  "ChromeEffect": one of ["OFF", "WEAK", "STRONG"],
+  "ColorChromeBlue": one of ["OFF", "WEAK", "STRONG"],
+  "WhiteBalance": one of ["Auto", "Daylight", "Shade", "Fluorescent1", "Fluorescent2", "Fluorescent3", "Incandescent", "Underwater", "ColorTemp"],
+  "WBShiftR": integer from -9 to 9,
+  "WBShiftB": integer from -9 to 9,
+  "WBColorTemp": integer from 2500 to 10000 (only if WhiteBalance is "ColorTemp"),
+  "HighlightTone": integer from -4 to 4,
+  "ShadowTone": integer from -4 to 4,
+  "Color": integer from -4 to 4,
+  "Sharpness": integer from -4 to 4,
+  "NoisReduction": integer from -4 to 4,
+  "Clarity": integer from -5 to 5,
+  "ExposureBias": number from -3.0 to 3.0 (in 1/3 stop increments)
+}`;
+
+    promptOutput.textContent = prompt;
+    goToStep(2);
+  });
+
+  // ═══ STEP 2 ═══
+  btnCopy.addEventListener('click', function() {
+    navigator.clipboard.writeText(promptOutput.textContent).then(() => {
+      copyFeedback.classList.add('show');
+      setTimeout(() => copyFeedback.classList.remove('show'), 2000);
+    });
+  });
+  btnToStep3.addEventListener('click', function() { goToStep(3); resetStep3(); });
+  btnBack1.addEventListener('click', function() { goToStep(1); });
+  btnBack2.addEventListener('click', function() { goToStep(2); });
+
+  // ═══ STEP 3 ═══
+  jsonInput.addEventListener('input', function() {
+    btnValidate.disabled = !jsonInput.value.trim();
+    validationMsg.className = 'validation-msg'; validationMsg.style.display = 'none';
+    previewArea.style.display = 'none'; btnDownload.style.display = 'none';
+    btnStartOver.style.display = 'none'; btnValidate.style.display = '';
+  });
+
+  btnValidate.addEventListener('click', function() {
+    const raw = jsonInput.value.trim();
+    parsedStack = null;
+    let jsonStr = raw;
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) jsonStr = fenceMatch[1].trim();
+    else { const bm = raw.match(/\[[\s\S]*\]/); if (bm) jsonStr = bm[0]; }
+
+    let data;
+    try { data = JSON.parse(jsonStr); } catch (e) { showValidation('error', 'Could not parse JSON. Make sure the AI returned a valid JSON array starting with [.'); return; }
+    if (!Array.isArray(data)) { if (typeof data === 'object' && data.FilmSimulation) data = [data]; else { showValidation('error', 'Expected a JSON array of preset objects.'); return; } }
+    if (data.length < 1 || data.length > 7) { showValidation('error', 'Expected 1-7 presets, got ' + data.length + '.'); return; }
+
+    const sims = FILM_SIMS[selectedGen] || FILM_SIMS['X-Trans V'];
+    const allErrors = [];
+    const validated = data.map(function(d, i) {
+      const errors = [], slot = d.slot || ('C' + (i + 1));
+      if (!d.FilmSimulation || !sims.includes(d.FilmSimulation)) errors.push(slot + ': FilmSimulation invalid');
+      Object.keys(VALID_VALS).forEach(k => { if (d[k] !== undefined && !VALID_VALS[k].includes(d[k])) errors.push(slot + ': ' + k + ' invalid'); });
+      Object.keys(NUM_RANGES).forEach(k => { if (d[k] !== undefined) { const v = Number(d[k]), r = NUM_RANGES[k]; if (isNaN(v) || v < r[0] || v > r[1]) errors.push(slot + ': ' + k + ' out of range'); } });
+      if (errors.length) { allErrors.push(...errors); return null; }
+      return { slot, name: d.name || ('Preset ' + (i+1)), useCase: d.useCase || '', bestFor: d.bestFor || '',
+        FilmSimulation: d.FilmSimulation||'Provia', DynamicRange: d.DynamicRange||'Auto', GrainEffect: d.GrainEffect||'OFF', GrainEffectSize: d.GrainEffectSize||'LARGE',
+        ChromeEffect: d.ChromeEffect||'OFF', ColorChromeBlue: d.ColorChromeBlue||'OFF', WhiteBalance: d.WhiteBalance||'Auto',
+        WBShiftR: Number(d.WBShiftR)||0, WBShiftB: Number(d.WBShiftB)||0, WBColorTemp: Number(d.WBColorTemp)||6500,
+        HighlightTone: Number(d.HighlightTone)||0, ShadowTone: Number(d.ShadowTone)||0, Color: Number(d.Color)||0,
+        Sharpness: Number(d.Sharpness)||0, NoisReduction: Number(d.NoisReduction)||0, Clarity: Number(d.Clarity)||0, ExposureBias: Number(d.ExposureBias)||0
+      };
+    });
+    if (allErrors.length) { showValidation('error', 'Validation issues:\n' + allErrors.map(e => '\u2022 ' + e).join('\n')); return; }
+    parsedStack = validated.filter(Boolean);
+    showValidation('success', parsedStack.length + ' preset' + (parsedStack.length > 1 ? 's' : '') + ' validated. Review your stack and download.');
+    renderStack(); previewArea.style.display = 'block'; btnDownload.style.display = ''; btnStartOver.style.display = ''; btnValidate.style.display = 'none';
+  });
+
+  function showValidation(type, msg) { validationMsg.className = 'validation-msg ' + type; validationMsg.style.display = 'block'; validationMsg.textContent = msg; }
+
+  function renderStack() {
+    presetStackEl.innerHTML = '';
+    parsedStack.forEach(function(preset) {
+      const card = document.createElement('div'); card.className = 'preset-card';
+      let settingsHTML = '';
+      SETTING_KEYS.forEach(function(key) {
+        if (key === 'WBColorTemp' && preset.WhiteBalance !== 'ColorTemp') return;
+        let val = preset[key];
+        if (typeof val === 'number' && key !== 'WBColorTemp' && val > 0) val = '+' + val;
+        if (key === 'WBColorTemp') val = val + 'K';
+        settingsHTML += '<div class="mini-setting' + (key === 'FilmSimulation' ? ' green' : '') + '"><div class="ms-label">' + (LABELS[key]||key) + '</div><div class="ms-value">' + val + '</div></div>';
+      });
+      card.innerHTML = '<div class="preset-header" onclick="this.parentElement.classList.toggle(\'open\')"><div class="preset-slot">' + esc(preset.slot) + '</div><div class="preset-info"><div class="preset-name">' + esc(preset.name) + '</div><div class="preset-use-case">' + esc(preset.useCase) + '</div>' + (preset.bestFor ? '<div class="preset-best-for">' + esc(preset.bestFor) + '</div>' : '') + '</div><svg class="preset-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="5 8 10 13 15 8"/></svg></div><div class="preset-details"><div class="preset-settings-grid">' + settingsHTML + '</div></div>';
+      presetStackEl.appendChild(card);
+    });
+  }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function resetStep3() { validationMsg.className = 'validation-msg'; validationMsg.style.display = 'none'; previewArea.style.display = 'none'; btnDownload.style.display = 'none'; btnStartOver.style.display = 'none'; btnValidate.style.display = ''; btnValidate.disabled = !jsonInput.value.trim(); parsedStack = null; }
+
+  // ═══ DOWNLOAD ═══
+  btnDownload.addEventListener('click', async function() {
+    if (!parsedStack || !parsedStack.length) return;
+    const sn = stackNameEl.value.trim() || 'Fuji_Vibes_Stack';
+    const safeSN = sn.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+    if (parsedStack.length === 1) { downloadSingleFP1(parsedStack[0], safeSN); return; }
+    if (typeof JSZip === 'undefined') { parsedStack.forEach(p => downloadSingleFP1(p, safeSN)); return; }
+    const zip = new JSZip();
+    parsedStack.forEach(function(preset) {
+      const xml = generateFP1(preset, selectedCamera, preset.slot + ' - ' + preset.name);
+      zip.file(preset.slot + '_' + preset.name.replace(/[^a-zA-Z0-9_\- ]/g,'').replace(/\s+/g,'_') + '.FP1', xml);
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = safeSN + '.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+
+  function downloadSingleFP1(preset) {
+    const xml = generateFP1(preset, selectedCamera, preset.slot + ' - ' + preset.name);
+    const blob = new Blob([xml], { type: 'application/xml' }); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = preset.slot + '_' + preset.name.replace(/[^a-zA-Z0-9_\- ]/g,'').replace(/\s+/g,'_') + '.FP1';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  function generateFP1(r, cam, label) {
+    const eb = (Math.round(r.ExposureBias * 3) / 3).toFixed(2);
+    const wt = r.WhiteBalance === 'ColorTemp' ? r.WBColorTemp + 'K' : '0K';
+    return `<?xml version="1.0" encoding="utf-8"?>
+<ConversionProfile application="FUJI X RAW STUDIO" version="1.0">
+    <PropertyGroup device="${esc(cam)}" version="1.0" label="${esc(label)}">
+        <SerialNumber>00000000</SerialNumber>
+        <TetherRAWConditonCode>00000000</TetherRAWConditonCode>
+        <Editable>TRUE</Editable>
+        <SourceFileName/>
+        <Fileerror>0</Fileerror>
+        <RotationAngle>0</RotationAngle>
+        <StructVer>65536</StructVer>
+        <IOPCode>0</IOPCode>
+        <ShootingCondition>0</ShootingCondition>
+        <FileType>JPG</FileType>
+        <ImageSize>L</ImageSize>
+        <ImageQuality>Fine</ImageQuality>
+        <ExposureBias>${eb}</ExposureBias>
+        <DynamicRange>${esc(r.DynamicRange)}</DynamicRange>
+        <WideDRange>0</WideDRange>
+        <FilmSimulation>${esc(r.FilmSimulation)}</FilmSimulation>
+        <BlackImageTone>0</BlackImageTone>
+        <MonochromaticColor_RG>0</MonochromaticColor_RG>
+        <GrainEffect>${esc(r.GrainEffect)}</GrainEffect>
+        <GrainEffectSize>${esc(r.GrainEffectSize)}</GrainEffectSize>
+        <ChromeEffect>${esc(r.ChromeEffect)}</ChromeEffect>
+        <ColorChromeBlue>${esc(r.ColorChromeBlue)}</ColorChromeBlue>
+        <SmoothSkinEffect>OFF</SmoothSkinEffect>
+        <WBShootCond>0</WBShootCond>
+        <WhiteBalance>${esc(r.WhiteBalance)}</WhiteBalance>
+        <WBShiftR>${r.WBShiftR}</WBShiftR>
+        <WBShiftB>${r.WBShiftB}</WBShiftB>
+        <WBColorTemp>${wt}</WBColorTemp>
+        <HighlightTone>${r.HighlightTone}</HighlightTone>
+        <ShadowTone>${r.ShadowTone}</ShadowTone>
+        <Color>${r.Color}</Color>
+        <Sharpness>${r.Sharpness}</Sharpness>
+        <NoisReduction>${r.NoisReduction}</NoisReduction>
+        <Clarity>${r.Clarity}</Clarity>
+        <LensModulationOpt>ON</LensModulationOpt>
+        <ColorSpace>sRGB</ColorSpace>
+        <HDR/>
+        <DigitalTeleConv/>
+    </PropertyGroup>
+</ConversionProfile>`;
+  }
+
+  btnStartOver.addEventListener('click', function() {
+    jsonInput.value = ''; stackNameEl.value = ''; vibeInput.value = ''; cameraSelect.value = '';
+    $('q-occasion').value = ''; $('q-extra').value = '';
+    document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+    selectedCamera = ''; selectedGen = ''; parsedStack = null;
+    resetStep3(); goToStep(1); checkStep1();
+  });
+})();
+</script>
+</body>
+</html>

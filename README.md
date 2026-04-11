@@ -1,8 +1,8 @@
 # Film Vibes
 
-A film recipe generator for Fujifilm cameras. Describe the vibe you're going for, use any AI to generate recipes, then download ready-to-import .FP1 preset files for [Fuji X Raw Studio](https://fujifilm-x.com/en-us/support/download/software/x-raw-studio/).
+A film recipe generator for Fujifilm X-series and GFX cameras. Describe the vibe you're going for, use any AI to generate recipes, then download ready-to-import .FP1 preset files for [Fujifilm X Raw Studio](https://fujifilm-x.com/en-us/support/download/software/x-raw-studio/).
 
-**Live app:** [joneilcaoile.github.io/FujiVibes](https://joneilcaoile.github.io/FujiVibes/)
+**Live app:** [joneilcaoile.github.io/FilmVibes](https://joneilcaoile.github.io/FilmVibes/)
 
 ## How it works
 
@@ -13,7 +13,7 @@ A film recipe generator for Fujifilm cameras. Describe the vibe you're going for
 
 ## Why the copy-paste workflow?
 
-The AI processing happens on your own account, not through this app. No API keys stored, no data collected, no server. You choose which AI you trust, and the app just handles the Fujifilm-specific file format.
+The AI processing happens on your own account, not through this app. No API keys stored, no data collected, no server. You choose which AI you trust, and the app just handles the file format.
 
 ## Supported cameras
 
@@ -26,3 +26,7 @@ Single HTML file. No build step, no dependencies beyond [JSZip](https://stuk.git
 ## License
 
 MIT
+
+---
+
+*Film Vibes is an independent, community-built tool. It is not affiliated with, endorsed by, or sponsored by Fujifilm Corporation. "Fujifilm," "X Raw Studio," "X-Trans," and related marks are the property of Fujifilm Corporation. The .FP1 file format is used here solely to enable interoperability with Fujifilm's own software.*

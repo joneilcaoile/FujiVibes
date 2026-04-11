@@ -1,4 +1,4 @@
-# Fuji Vibes
+# Film Vibes
 
 A film recipe generator for Fujifilm cameras. Describe the vibe you're going for, use any AI to generate recipes, then download ready-to-import .FP1 preset files for [Fuji X Raw Studio](https://fujifilm-x.com/en-us/support/download/software/x-raw-studio/).
 

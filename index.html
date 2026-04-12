@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fuji Vibes — Film Recipe Generator</title>
+<title>Film Vibes — Film Recipe Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
@@ -197,7 +197,7 @@
   <div class="film-strip-top"><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div><div class="frame"></div></div>
   <header>
     <div class="logo-mark"><div class="film-icon"><span class="sprocket"></span><span class="sprocket"></span><span class="sprocket"></span><span class="sprocket"></span></div></div>
-    <h1>FUJI <span class="vibes">VIBES</span></h1>
+    <h1>FILM <span class="vibes">VIBES</span></h1>
     <p class="tagline">preset stack generator <span class="blink">_</span></p>
   </header>
   <div class="film-divider"><div class="line"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="line"></div></div>
@@ -385,7 +385,7 @@
   </section>
 
   <footer>
-    <p>Fuji Vibes generates standard .FP1 XML profiles compatible with Fuji X Raw Studio.<br>
+    <p>Film Vibes generates standard .FP1 XML profiles compatible with Fujifilm X Raw Studio.<br>
     Drop files into <span style="color:var(--text-muted)">AppData\Local\com.fujifilm.denji\X_RAW_STUDIO\</span> and load via USB.<br>
     Not affiliated with Fujifilm.</p>
   </footer>
@@ -628,7 +628,7 @@ Each object must have these exact keys:
   // ═══ DOWNLOAD ═══
   btnDownload.addEventListener('click', async function() {
     if (!parsedStack || !parsedStack.length) return;
-    const sn = stackNameEl.value.trim() || 'Fuji_Vibes_Stack';
+    const sn = stackNameEl.value.trim() || 'Film_Vibes_Stack';
     const safeSN = sn.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
     if (parsedStack.length === 1) { downloadSingleFP1(parsedStack[0], safeSN); return; }
     if (typeof JSZip === 'undefined') { parsedStack.forEach(p => downloadSingleFP1(p, safeSN)); return; }
